@@ -1,63 +1,92 @@
-abstract class ReportBase {
+export abstract class ReportBase {
   protected id?: number;
   protected studentName: string;
-  protected room?: string;
+  protected room?: string | null; //allow null
   protected message: string;
   protected status: string;
   protected priority: string;
+  protected createdAt?: Date;
+  protected updatedAt?: Date;
 
-  constructor(params: {
+  constructor(opts: {
     id?: number;
     studentName: string;
-    room?: string;
+    room?: string | null; //allow null
     message: string;
     status?: string;
     priority?: string;
+    createdAt?: Date;
+    updatedAt?: Date;
   }) {
-    this.id = params.id;
-    this.studentName = params.studentName;
-    this.room = params.room;
-    this.message = params.message;
-    this.status = params.status ?? "pending";
-    this.priority = params.priority ?? "normal";
+    this.id = opts.id;
+    this.studentName = opts.studentName;
+    this.room = opts.room ?? null;
+    this.message = opts.message;
+    this.status = opts.status ?? "pending";
+    this.priority = opts.priority ?? "normal";
+    this.createdAt = opts.createdAt;
+    this.updatedAt = opts.updatedAt;
   }
 
-  public getId(): number | undefined {
+
+  getId() {
     return this.id;
   }
-  public getStudentName(): string {
+
+  getStudentName() {
     return this.studentName;
   }
-  public getRoom(): string | undefined {
-    return this.room;
+
+  getRoom() {
+    return this.room ?? "";
   }
-  public getMessage(): string {
+
+  getMessage() {
     return this.message;
   }
-  public getStatus(): string {
+
+  getStatus() {
     return this.status;
   }
-  public setStatus(newStatus: string) {
+
+  getPriority() {
+    return this.priority;
+  }
+
+  getCreatedAt() {
+    return this.createdAt;
+  }
+
+  getUpdatedAt() {
+    return this.updatedAt;
+  }
+
+  setStatus(newStatus: string) {
     const allowed = ["pending", "reviewing", "resolved"];
     if (!allowed.includes(newStatus)) {
-      throw new Error("Invalid status");
+      throw new Error("invalid status");
     }
     this.status = newStatus;
   }
-  public getPriority(): string {
-    return this.priority;
-  }
-  public setPriority(newPriority: string) {
+
+  setPriority(newPriority: string) {
     const allowed = ["normal", "urgent"];
-    this.priority = allowed.includes(newPriority) ? newPriority : "normal";
+    if (!allowed.includes(newPriority)) {
+      throw new Error("invalid priority");
+    }
+    this.priority = newPriority;
   }
 
-  public abstract getSummaryBadge(): string;
+  setMessage(newMsg: string) {
+    this.message = newMsg;
+  }
 
-  public toPersistenceObject() {
+  abstract getSummaryBadge(): string;
+
+  toPersistenceObject() {
     return {
       studentName: this.studentName,
-      room: this.room,
+      room: this.room ?? null,
       message: this.message,
       status: this.status,
       priority: this.priority,
@@ -65,36 +94,48 @@ abstract class ReportBase {
   }
 }
 
-class NormalReport extends ReportBase {
-  public getSummaryBadge(): string {
-    return `[NORMAL] ${this.getStudentName()}: ${this.getMessage().slice(
+export class NormalReport extends ReportBase {
+  getSummaryBadge(): string {
+    return `[NORMAL] ${this.getStudentName()} - ${this.getMessage().slice(
       0,
-      20
-    )}...`;
+      30
+    )}`;
   }
 }
 
-class EmergencyReport extends ReportBase {
-  public getSummaryBadge(): string {
-    return `[URGENT🔥] ${this.getStudentName()}: ${this.getMessage().slice(
+export class EmergencyReport extends ReportBase {
+  getSummaryBadge(): string {
+    return `🚨 URGENT: ${this.getStudentName()} - ${this.getMessage().slice(
       0,
-      20
-    )}...`;
+      30
+    )}`;
   }
 }
 
-export function makeReport(params: {
+export function makeReport(data: {
   id?: number;
   studentName: string;
-  room?: string;
+  room?: string | null; 
   message: string;
   status?: string;
   priority?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
 }): ReportBase {
-  if (params.priority === "urgent") {
-    return new EmergencyReport(params);
-  }
-  return new NormalReport(params);
-}
+  const baseProps = {
+    id: data.id,
+    studentName: data.studentName,
+    room: data.room ?? null,
+    message: data.message,
+    status: data.status ?? "pending",
+    priority: data.priority ?? "normal",
+    createdAt: data.createdAt,
+    updatedAt: data.updatedAt,
+  };
 
-export type { ReportBase };
+  if (baseProps.priority === "urgent") {
+    return new EmergencyReport(baseProps);
+  } else {
+    return new NormalReport(baseProps);
+  }
+}
